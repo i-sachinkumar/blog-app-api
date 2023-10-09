@@ -1,84 +1,115 @@
 package com.ihrsachin.blogappapi.services.impl;
 
-import com.ihrsachin.blogappapi.exceptions.ResourceNotFoundException;
-import com.ihrsachin.blogappapi.model.User;
+import com.ihrsachin.blogappapi.config.AppConstants;
+import com.ihrsachin.blogappapi.entities.*;
+import com.ihrsachin.blogappapi.exceptions.*;
 import com.ihrsachin.blogappapi.payloads.UserDto;
-import com.ihrsachin.blogappapi.repositories.UserRepo;
+import com.ihrsachin.blogappapi.repositories.*;
 import com.ihrsachin.blogappapi.services.UserService;
+import org.modelmapper.ModelMapper;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
-import java.util.ArrayList;
 import java.util.List;
+import java.util.stream.Collectors;
 
 @Service
 public class UserServiceImpl implements UserService {
 
-    @Autowired
-    private UserRepo userRepo;
+	@Autowired
+	private UserRepo userRepo;
 
+	@Autowired
+	private ModelMapper modelMapper;
 
-    @Override
-    public UserDto createUser(UserDto userDto) {
-        User user = this.userDtoToUser(userDto);
-        User savedUser = userRepo.save(user);
-        return this.userToUserDto(savedUser);
-    }
+	@Autowired
+	private PasswordEncoder passwordEncoder;
 
-    @Override
-    public UserDto updateUser(UserDto userDto, int userId) {
+	@Autowired
+	private RoleRepo roleRepo;
 
-        User currUser = userRepo.findById(userId)
-                .orElseThrow(() -> new ResourceNotFoundException("User", "ID", userId));
+	@Override
+	public UserDto createUser(UserDto userDto) {
+		User user = this.dtoToUser(userDto);
+		User savedUser = this.userRepo.save(user);
+		return this.userToDto(savedUser);
+	}
 
-        currUser.setName(userDto.getName());
-        currUser.setEmail(userDto.getEmail());
-        currUser.setPassword(userDto.getPassword());
-        currUser.setAbout(userDto.getAbout());
-        userRepo.save(currUser);
-        return userToUserDto(currUser);
-    }
+	@Override
+	public UserDto updateUser(UserDto userDto, Integer userId) {
 
-    @Override
-    public UserDto getUserById(int id) {
-        User user = userRepo.findById(id)
-                .orElseThrow(() -> new ResourceNotFoundException("User", "ID", id));
-        return userToUserDto(user);
-    }
+		User user = this.userRepo.findById(userId)
+				.orElseThrow(() -> new ResourceNotFoundException("User", " Id ", userId));
 
-    @Override
-    public List<UserDto> getAllUsers() {
-        List<User> allUsers = userRepo.findAll();
-        List<UserDto> allUsersDto = new ArrayList<>();
-        for (User user : allUsers) {
-            allUsersDto.add(userToUserDto(user));
-        }
-        return allUsersDto;
-    }
+		user.setName(userDto.getName());
+		user.setEmail(userDto.getEmail());
+		user.setPassword(userDto.getPassword());
+		user.setAbout(userDto.getAbout());
 
-    @Override
-    public void deleteUser(int id) {
-        userRepo.deleteById(id);
-    }
+		User updatedUser = this.userRepo.save(user);
+		UserDto userDto1 = this.userToDto(updatedUser);
+		return userDto1;
+	}
 
-    User userDtoToUser(UserDto userDto) {
-        User user = new User();
-        user.setId(userDto.getId());
-        user.setName(userDto.getName());
-        user.setEmail(userDto.getEmail());
-        user.setPassword(userDto.getPassword());
-        user.setAbout(userDto.getAbout());
-        return user;
-    }
+	@Override
+	public UserDto getUserById(Integer userId) {
 
+		User user = this.userRepo.findById(userId)
+				.orElseThrow(() -> new ResourceNotFoundException("User", " Id ", userId));
 
-    UserDto userToUserDto(User user) {
-        UserDto userDto = new UserDto();
-        userDto.setId(user.getId());
-        userDto.setName(user.getName());
-        userDto.setEmail(user.getEmail());
-        userDto.setPassword(user.getPassword());
-        userDto.setAbout(user.getAbout());
-        return userDto;
-    }
+		return this.userToDto(user);
+	}
+
+	@Override
+	public List<UserDto> getAllUsers() {
+
+		List<User> users = this.userRepo.findAll();
+		List<UserDto> userDtos = users.stream().map(user -> this.userToDto(user)).collect(Collectors.toList());
+
+		return userDtos;
+	}
+
+	@Override
+	public void deleteUser(Integer userId) {
+		User user = this.userRepo.findById(userId)
+				.orElseThrow(() -> new ResourceNotFoundException("User", "Id", userId));
+		this.userRepo.delete(user);
+
+	}
+
+	public User dtoToUser(UserDto userDto) {
+		User user = this.modelMapper.map(userDto, User.class);
+
+		// user.setId(userDto.getId());
+		// user.setName(userDto.getName());
+		// user.setEmail(userDto.getEmail());
+		// user.setAbout(userDto.getAbout());
+		// user.setPassword(userDto.getPassword());
+		return user;
+	}
+
+	public UserDto userToDto(User user) {
+		UserDto userDto = this.modelMapper.map(user, UserDto.class);
+		return userDto;
+	}
+
+	@Override
+	public UserDto registerNewUser(UserDto userDto) {
+
+		User user = this.modelMapper.map(userDto, User.class);
+
+		// encoded the password
+		user.setPassword(this.passwordEncoder.encode(user.getPassword()));
+
+		// roles
+		Role role = this.roleRepo.findById(AppConstants.NORMAL_USER).get();
+
+		user.getRoles().add(role);
+
+		User newUser = this.userRepo.save(user);
+
+		return this.modelMapper.map(newUser, UserDto.class);
+	}
+
 }

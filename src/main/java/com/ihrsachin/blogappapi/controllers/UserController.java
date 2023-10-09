@@ -1,89 +1,58 @@
 package com.ihrsachin.blogappapi.controllers;
 
-
+import com.ihrsachin.blogappapi.payloads.ApiResponse;
 import com.ihrsachin.blogappapi.payloads.UserDto;
 import com.ihrsachin.blogappapi.services.UserService;
-import com.opencsv.bean.CsvToBean;
-import com.opencsv.bean.CsvToBeanBuilder;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
-import org.springframework.web.multipart.MultipartFile;
 
-import java.io.BufferedReader;
-import java.io.IOException;
-import java.io.InputStreamReader;
-import java.io.Reader;
-import java.util.ArrayList;
+import javax.validation.Valid;
 import java.util.List;
 
 @RestController
-@RequestMapping("api/users")
+@RequestMapping("/api/v1/users")
 public class UserController {
 
-    UserService userService;
+	@Autowired
+	private UserService userService;
 
-    @Autowired
-    public UserController(UserService userService){
-        this.userService = userService;
-    }
+	// POST-create user
+	@PostMapping("/")
+	public ResponseEntity<UserDto> createUser(@Valid @RequestBody UserDto userDto) {
+		UserDto createUserDto = this.userService.createUser(userDto);
+		return new ResponseEntity<>(createUserDto, HttpStatus.CREATED);
+	}
 
-    //GET:
-    @GetMapping("/")
-    public List<UserDto> getUsers(){
-        return userService.getAllUsers();
-    }
+	// PUT- update user
 
-    @GetMapping("/{id}")
-    public UserDto getUser(@PathVariable int id){
-        return userService.getUserById(id);
-    }
+	@PutMapping("/{userId}")
+	public ResponseEntity<UserDto> updateUser(@Valid @RequestBody UserDto userDto, @PathVariable("userId") Integer uid) {
+		UserDto updatedUser = this.userService.updateUser(userDto, uid);
+		return ResponseEntity.ok(updatedUser);
+	}
 
+	//ADMIN
+	// DELETE -delete user
+	@PreAuthorize("hasRole('ADMIN')")
+	@DeleteMapping("/{userId}")
+	public ResponseEntity<ApiResponse> deleteUser(@PathVariable("userId") Integer uid) {
+		this.userService.deleteUser(uid);
+		return new ResponseEntity<ApiResponse>(new ApiResponse("User deleted Successfully", true), HttpStatus.OK);
+	}
 
-    //POST : create user
-    @PostMapping("/")
-    public UserDto createUSer(@RequestBody UserDto userDto){
-        return userService.createUser(userDto);
-    }
+	// GET - user get
+	@GetMapping("/")
+	public ResponseEntity<List<UserDto>> getAllUsers() {
+		return ResponseEntity.ok(this.userService.getAllUsers());
+	}
 
-    //POST: add list of users
-    @PostMapping("/addFromCSV")
-    public List<UserDto> addUsersFromCSV(@RequestParam("file") MultipartFile file) {
-        List<UserDto> addedUsers = new ArrayList<>();
-
-        try (Reader reader = new BufferedReader(new InputStreamReader(file.getInputStream()))) {
-            CsvToBean<UserDto> csvToBean = new CsvToBeanBuilder<UserDto>(reader)
-                    .withType(UserDto.class)
-//                    .withSkipLines(1)
-                    .withIgnoreLeadingWhiteSpace(true)
-                    .build();
-
-            List<UserDto> userDtoList = csvToBean.parse();
-
-            for (UserDto userDto : userDtoList) {
-                UserDto addedUser = userService.createUser(userDto);
-                addedUsers.add(addedUser);
-            }
-
-        } catch (IOException e) {
-            // Log or handle the exception, e.g., print the error message
-            System.err.println("Error creating user: " + e.getMessage());
-        }
-
-        return addedUsers;
-    }
-
-    // Update
-    @PutMapping("/{id}")
-    public UserDto updateUser(@RequestBody UserDto userDto, @PathVariable int id ){
-        return userService.updateUser(userDto, id);
-    }
-
-    //Delete
-    @DeleteMapping("/{id}")
-    public void deleteUser(@PathVariable int id){
-        userService.deleteUser(id);
-    }
-
-
+	// GET - user get
+	@GetMapping("/{userId}")
+	public ResponseEntity<UserDto> getSingleUser(@PathVariable Integer userId) {
+		return ResponseEntity.ok(this.userService.getUserById(userId));
+	}
 
 }
