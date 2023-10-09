@@ -1,0 +1,30 @@
+package com.ihrsachin.blogappapi.payloads;
+
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.Setter;
+
+@NoArgsConstructor
+@Getter
+@Setter
+public class UserDto {
+    private Integer id;
+    private String name;
+    private String email;
+    private String password;
+    private String about;
+
+
+    @Override
+    public String toString() {
+        return "UserDto{" +
+                "id=" + id +
+                ", name='" + name + '\'' +
+                ", email='" + email + '\'' +
+                ", password='" + password + '\'' +
+                ", about='" + about + '\'' +
+                '}';
+    }
+}
+
+
